@@ -32,7 +32,13 @@ namespace CKLLib
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Values);
+            int hash = 17;
+            foreach (var pair in Values) 
+            {
+                hash = hash * 31 + (pair?.GetHashCode() ?? 0);
+            }
+
+            return hash;
         }
 
         public override string ToString()
