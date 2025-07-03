@@ -6,7 +6,7 @@ using CKLLib;
 
 namespace CKLDrawing
 {
-    public class Interval : Button // компонент инетрвала истинности индикаторной функции
+    public class Interval : Button // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     {
         public TimeInterval CurrentInterval { 
             get { return _interval; } 

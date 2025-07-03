@@ -11,7 +11,7 @@ using System.Windows.Media;
 
 namespace CKLDrawing
 {
-    internal static class Constants
+    public static class Constants
     {
         public static class DefaultColors 
         {
