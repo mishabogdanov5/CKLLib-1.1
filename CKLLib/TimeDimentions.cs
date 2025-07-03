@@ -6,15 +6,15 @@ using System.Threading.Tasks;
 
 namespace CKLLib
 {
-	public enum TimeDimentions
-	{
-		NANOSECONDS,
-		MICROSECONDS,
-		MILLISECONDS,
-		SECONDS,
-		MINUTES,
-		HOURS,
-		DAYS,
-		WEEKS
-	}
+    public enum TimeDimentions
+    {
+        NANOSECONDS,
+        MICROSECONDS,
+        MILLISECONDS,
+        SECONDS,
+        MINUTES,
+        HOURS,
+        DAYS,
+        WEEKS
+    }
 }

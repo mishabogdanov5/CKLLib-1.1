@@ -9,11 +9,11 @@ using System.Threading.Tasks;
 
 namespace CKLLib
 {
-    public class RelationItem: ICloneable // Элемент динамического отношения
+    public class RelationItem : ICloneable // Элемент динамического отношения
     {
         public Pair Value { get; set; } // Элемент из множества, задающего отношение
 
-		public List<TimeInterval> Intervals { get; set; } // Интервалы истинности
+        public List<TimeInterval> Intervals { get; set; } // Интервалы истинности
                                                           // индикаторной функции элемента
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -24,13 +24,13 @@ namespace CKLLib
             Value = new Pair([string.Empty, string.Empty]);
             Intervals = new List<TimeInterval>();
         }
-        
+
         public RelationItem(Pair value, [Required] IEnumerable<TimeInterval> intervals)
         {
             Value = value;
-			
+
             Intervals = intervals.OrderBy(x => x, new TimeIntervalsComparer()).ToList();
-			if (Intervals.Count > 1) Intervals.RemoveAll(x => x.Equals(TimeInterval.ZERO));
+            if (Intervals.Count > 1) Intervals.RemoveAll(x => x.Equals(TimeInterval.ZERO));
         }
 
         public RelationItem(Pair value, List<TimeInterval> intervals, object? info) : this(value, intervals)
@@ -54,43 +54,43 @@ namespace CKLLib
             return HashCode.Combine(Value, Intervals);
         }
 
-		public object Clone()
-		{
-            List<TimeInterval> newIntervals  = new List<TimeInterval>();
+        public object Clone()
+        {
+            List<TimeInterval> newIntervals = new List<TimeInterval>();
 
-            foreach (TimeInterval interval in Intervals) 
+            foreach (TimeInterval interval in Intervals)
             {
                 newIntervals.Add(new TimeInterval(interval.StartTime, interval.EndTime));
             }
 
             return new RelationItem(Value, newIntervals, Info);
-		}
+        }
 
-		private class TimeIntervalEqualityComparer : IEqualityComparer<TimeInterval>
-		{
-			public bool Equals(TimeInterval? x, TimeInterval? y)
-			{
-				if (x == null) return false;
+        private class TimeIntervalEqualityComparer : IEqualityComparer<TimeInterval>
+        {
+            public bool Equals(TimeInterval? x, TimeInterval? y)
+            {
+                if (x == null) return false;
 
-				return x.Equals(y);
-			}
+                return x.Equals(y);
+            }
 
-			public int GetHashCode([DisallowNull] TimeInterval obj)
-			{
-				return obj.GetHashCode();
-			}
-		}
+            public int GetHashCode([DisallowNull] TimeInterval obj)
+            {
+                return obj.GetHashCode();
+            }
+        }
 
-	}
-	public class TimeIntervalsComparer : IComparer<TimeInterval>
-	{
-		public int Compare(TimeInterval? x, TimeInterval? y)
-		{
-			if (x == null && y == null) return 0;
-			if (x == null) return -1;
-			if (y == null) return 1;
+    }
+    public class TimeIntervalsComparer : IComparer<TimeInterval>
+    {
+        public int Compare(TimeInterval? x, TimeInterval? y)
+        {
+            if (x == null && y == null) return 0;
+            if (x == null) return -1;
+            if (y == null) return 1;
 
-			return x.StartTime.CompareTo(y.StartTime);
-		}
-	}
+            return x.StartTime.CompareTo(y.StartTime);
+        }
+    }
 }

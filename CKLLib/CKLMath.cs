@@ -11,7 +11,7 @@ using System.Transactions;
 
 namespace CKLLib
 {
-    namespace Operations 
+    namespace Operations
     {
         public static class CKLMath // Статический класс, содержащий
                                     // операции алгебры 
@@ -199,7 +199,7 @@ namespace CKLLib
                 return new CKL(newPath, ckl.GlobalInterval, ckl.Dimention, newSource, ckl.Relation);
             }
 
-            public static bool SourceEquality(HashSet<Pair>? s1, HashSet<Pair>? s2) 
+            public static bool SourceEquality(HashSet<Pair>? s1, HashSet<Pair>? s2)
             {
                 if (s1 == null && s2 == null) return true;
 
@@ -213,13 +213,13 @@ namespace CKLLib
                     if (!s2.Contains(p, new Pair.PairEqualityComparer())) areEqual = false;
                 }
 
-				foreach (Pair p in s2)
-				{
-					if (!s1.Contains(p, new Pair.PairEqualityComparer())) areEqual = false;
-				}
+                foreach (Pair p in s2)
+                {
+                    if (!s1.Contains(p, new Pair.PairEqualityComparer())) areEqual = false;
+                }
 
                 return areEqual;
-			}
+            }
 
             //CKL Logic operations
 
@@ -314,41 +314,13 @@ namespace CKLLib
                 return res;
             }
 
-            public static List<TimeInterval> OrderedIntervalsUnion(List<TimeInterval> intervals1, List<TimeInterval> intervals2) 
+            public static List<TimeInterval> OrderedIntervalsUnion(List<TimeInterval> intervals1, List<TimeInterval> intervals2)
             {
                 List<TimeInterval> res = IntervalsUnion(intervals1, intervals2);
 
                 if (res.Count > 1) res.RemoveAll(x => x.Equals(TimeInterval.ZERO));
                 return res.OrderBy(x => x, new TimeIntervalsComparer()).ToList();
             }
-            private static TimeInterval IntervalsDisjPath(TimeInterval interval1, TimeInterval interval2, double maxRestTime) 
-            {
-                if (interval1.EndTime > interval2.StartTime || interval1.EndTime + maxRestTime < interval2.StartTime) return TimeInterval.ZERO;
-
-                return new TimeInterval(interval1.StartTime, interval2.EndTime);
-            }
-              
-            public static List<TimeInterval> IntervalsDisjunctionForPath(List<TimeInterval> intervals1, List<TimeInterval> intervals2, TimeInterval global, 
-                double maxRestTime = 0) 
-            {
-                if (intervals1.Count == 0 || intervals1[0].StartTime != global.StartTime) return [TimeInterval.ZERO];
-
-                TimeInterval temp;
-
-                foreach (TimeInterval interval in intervals2) 
-                {
-                    temp = IntervalsDisjPath(intervals1[0], interval, maxRestTime);
-
-					if (temp.EndTime > intervals1[0].EndTime) 
-                    {
-                        if (temp.EndTime > global.EndTime) return [new TimeInterval(global.StartTime, global.EndTime)];
-                        return [temp];
-                    }
-                }
-
-                return [new TimeInterval(intervals1[0].StartTime, intervals1[0].EndTime)];
-            }
-
 
             public static CKL Union(CKL ckl1, CKL ckl2) // объединение динамических отношений
             {
@@ -692,29 +664,74 @@ namespace CKLLib
                 if (!ckl1.GlobalInterval.Equals(ckl2.GlobalInterval)) throw new ArgumentException();
                 if (!ckl1.Dimention.Equals(ckl2.Dimention)) throw new ArgumentException();
 
-                foreach (Pair p1 in ckl1.Source)
+                foreach (Pair p in ckl1.Source) 
                 {
-                    if (!ckl2.Source.Any(el => el.Values.Last().ToString().Equals(p1.Values.First().ToString()))) throw new ArgumentException();
+                    if (p.Values.Count < 2) throw new ArgumentException();
+                }
+
+                foreach (Pair p in ckl2.Source) 
+                {
+                    if (p.Values.Count < 2) throw new ArgumentException();
                 }
             }
 
-            public static CKL Composition(CKL ckl1, CKL ckl2)
+            private static List<TimeInterval> LeftPrecedenceCombine(List<TimeInterval> intervals1, List<TimeInterval> intervals2, double t) 
+            {
+				if (intervals1[0].Equals(TimeInterval.ZERO)) return [TimeInterval.ZERO];
+
+				List<TimeInterval> res = [];
+
+                for (int i = 0; i < intervals2.Count; i++)
+                {
+                    if (intervals1[0].StartTime + t < intervals2[i].EndTime) 
+                        res.Add(new TimeInterval(intervals2[i].StartTime > intervals1[0].StartTime + t ? intervals2[i].StartTime : intervals1[0].StartTime + t, intervals2[i].EndTime));
+                }
+
+                if (res.Count == 0) res.Add(TimeInterval.ZERO);
+
+                return res;
+            }
+
+            public static CKL Composition(CKL ckl1, CKL ckl2, double t)
             {
                 TryThrowAlgebraException(ckl1, ckl2);
 
-                HashSet<Pair> source = new HashSet<Pair>();
+                Dictionary<string, List<RelationItem>> firstVals = new Dictionary<string, List<RelationItem>>(); 
+                Dictionary<string, List<RelationItem>> lastVals = new Dictionary<string, List<RelationItem>>();
+
+                string key;
+                foreach (RelationItem item in ckl1.Relation) 
+                {
+                    key = item.Value.Values.Last().ToString();
+
+                    if (!lastVals.ContainsKey(key)) lastVals.Add(key, []);
+                    lastVals[key].Add(item);
+                }
+
+				foreach (RelationItem item in ckl2.Relation)
+				{
+					key = item.Value.Values.First().ToString();
+
+					if (!firstVals.ContainsKey(key)) firstVals.Add(key, []);
+					firstVals[key].Add(item);
+				}
+
+				HashSet<Pair> source = new HashSet<Pair>();
                 HashSet<RelationItem> relation = new HashSet<RelationItem>();
-                Pair p;
+                Pair pair;
 
                 foreach (RelationItem item1 in ckl1.Relation)
                 {
-                    foreach (RelationItem item2 in ckl2.Relation)
+                    key = item1.Value.Values.Last().ToString();
+
+                    if (firstVals.ContainsKey(key)) 
                     {
-                        if (item2.Value.Values.First().ToString().Equals(item1.Value.Values.Last().ToString()))
+                        foreach (RelationItem item2 in firstVals[key]) 
                         {
-                            p = new Pair(item1.Value.Values.GetRange(0, item1.Value.Values.Count - 1).Concat(item2.Value.Values));
-                            source.Add(p);
-                            relation.Add(new RelationItem(p, IntervalsIntersection(item1.Intervals, item2.Intervals)));
+                            pair = new Pair(item1.Value.Values.GetRange(0, item1.Value.Values.Count - 1).Concat(item2.Value.Values));
+                            source.Add(pair);
+                            relation.Add(new RelationItem(pair, LeftPrecedenceCombine(TruncateIntervals(item1.Intervals, 
+                                (interval) => interval.Duration >= t), item2.Intervals, t)));
                         }
                     }
                 }
@@ -730,19 +747,6 @@ namespace CKLLib
 
                 return new CKL(newFilePath, ckl1.GlobalInterval, ckl1.Dimention, source, relation);
             }
-
-            public static CKL CompositionWithPath(CKL ckl1, CKL ckl2) 
-            {
-                HashSet<Pair> source = new HashSet<Pair>();
-                HashSet<RelationItem> relation = new HashSet<RelationItem>();
-
-                Pair p;
-
-                //TODO: continue
-
-                return new CKL();
-			}
-
 
             //Semantic operations
             private static void TryThrowSemanticException(CKL ckl1, CKL ckl2)
@@ -805,8 +809,8 @@ namespace CKLLib
                 {
                     foreach (RelationItem item2 in ckl2.Relation)
                     {
-						p = new Pair([item1.Value.Values[0], item2.Value.Values[0]]);
-						source.Add(p);
+                        p = new Pair([item1.Value.Values[0], item2.Value.Values[0]]);
+                        source.Add(p);
                         relation.Add(new RelationItem(p, IntervalsIntersection(item1.Intervals, item2.Intervals)));
                     }
                 }
@@ -835,8 +839,8 @@ namespace CKLLib
                 {
                     foreach (RelationItem item2 in ckl2.Relation)
                     {
-						p = new Pair([item1.Value.Values[0], item2.Value.Values[0]]);
-						source.Add(p);
+                        p = new Pair([item1.Value.Values[0], item2.Value.Values[0]]);
+                        source.Add(p);
                         relation.Add(new RelationItem(p, IntervalsDifference(item1.Intervals, item2.Intervals)));
                     }
                 }
@@ -867,7 +871,8 @@ namespace CKLLib
 
                 foreach (RelationItem item in ckl.Relation)
                 {
-                    if (item.Value.HasObject(current, comp) && IsIntervalInserted(interval, item.Intervals))
+                    if (item.Value.HasObject(current, comp) && !item.Intervals[0].Equals(TimeInterval.ZERO) &&
+                        IsIntervalInserted(interval, item.Intervals))
                     {
                         source.Add(item.Value);
                         relation.Add(new RelationItem(item.Value, new List<TimeInterval>() { (TimeInterval)interval.Clone() }));
@@ -888,49 +893,50 @@ namespace CKLLib
                 return new CKL(newPath, interval, ckl.Dimention, source, relation);
             }
 
-            private static bool ContainsMany(Pair p, List<object> currents, Func<object, object, bool> comp) 
+            private static bool ContainsMany(Pair p, List<object> currents, Func<object, object, bool> comp)
             {
                 foreach (object obj in currents) if (!p.HasObject(obj, comp)) return false;
 
                 return true;
             }
 
-            public static CKL ItemProjection(CKL ckl, List<object> currents, Func<object, object, bool> comp, TimeInterval interval) 
+            public static CKL ItemProjection(CKL ckl, List<object> currents, Func<object, object, bool> comp, TimeInterval interval)
             {
-				if (ckl == null) throw new ArgumentNullException("CKL object could not be null");
+                if (ckl == null) throw new ArgumentNullException("CKL object could not be null");
 
-				if (interval == null) throw new ArgumentNullException("Time Interval shouldn't be null");
+                if (interval == null) throw new ArgumentNullException("Time Interval shouldn't be null");
 
                 if (currents == null || currents.Contains(null)) throw new ArgumentNullException("Items can not be null");
 
 
-				HashSet<Pair> source = new HashSet<Pair>();
-				HashSet<RelationItem> relation = new HashSet<RelationItem>();
+                HashSet<Pair> source = new HashSet<Pair>();
+                HashSet<RelationItem> relation = new HashSet<RelationItem>();
 
-				foreach (RelationItem item in ckl.Relation)
-				{
-					if (ContainsMany(item.Value, currents, comp) && IsIntervalInserted(interval, item.Intervals))
-					{
-						source.Add(item.Value);
-						relation.Add(new RelationItem(item.Value, new List<TimeInterval>() { (TimeInterval)interval.Clone() }));
-					}
-				}
+                foreach (RelationItem item in ckl.Relation)
+                {
+                    if (ContainsMany(item.Value, currents, comp) && !item.Intervals[0].Equals(TimeInterval.ZERO) &&
+                        IsIntervalInserted(interval, item.Intervals))
+                    {
+                        source.Add(item.Value);
+                        relation.Add(new RelationItem(item.Value, new List<TimeInterval>() { (TimeInterval)interval.Clone() }));
+                    }
+                }
 
 
-				string file = Path.GetFileName(ckl.FilePath);
-				string name = file.Substring(0, file.LastIndexOf('.'));
+                string file = Path.GetFileName(ckl.FilePath);
+                string name = file.Substring(0, file.LastIndexOf('.'));
 
-				string newPath = GetNewFilePath(ckl.FilePath, $"proj_{string.Join('_', currents)}_" +
-					$"{(interval.StartTime.ToString().IndexOf('.') == -1 ?
-					interval.StartTime.ToString() : interval.StartTime.ToString().Substring(0, interval.EndTime.ToString().IndexOf('.')))}_" +
-					$"{(interval.EndTime.ToString().IndexOf('.') == -1 ?
-					interval.EndTime.ToString() : interval.EndTime.ToString().Substring(0, interval.EndTime.ToString().IndexOf('.')))}_" +
-					name);
+                string newPath = GetNewFilePath(ckl.FilePath, $"proj_{string.Join('_', currents)}_" +
+                    $"{(interval.StartTime.ToString().IndexOf('.') == -1 ?
+                    interval.StartTime.ToString() : interval.StartTime.ToString().Substring(0, interval.EndTime.ToString().IndexOf('.')))}_" +
+                    $"{(interval.EndTime.ToString().IndexOf('.') == -1 ?
+                    interval.EndTime.ToString() : interval.EndTime.ToString().Substring(0, interval.EndTime.ToString().IndexOf('.')))}_" +
+                    name);
 
-				return new CKL(newPath, interval, ckl.Dimention, source, relation);
-			}
+                return new CKL(newPath, interval, ckl.Dimention, source, relation);
+            }
 
-            private static bool AreCKLGroupable(CKL ckl1, CKL ckl2) 
+            private static bool AreCKLGroupable(CKL ckl1, CKL ckl2)
             {
                 if (ckl1 == null && ckl2 == null) return true;
 
@@ -947,7 +953,7 @@ namespace CKLLib
                 }
                 catch { }
 
-                try 
+                try
                 {
                     TryThrowBinaryExceptions(ckl1, cond);
                     return true;
@@ -965,7 +971,7 @@ namespace CKLLib
             }
 
             public static List<List<CKL>> GroupByTheme(List<CKL> diagrams, Func<CKL, CKL, bool> filter)
-            { 
+            {
                 List<List<CKL>> result = new List<List<CKL>>();
 
                 if (diagrams == null || diagrams.Count == 0) return result;
@@ -973,19 +979,19 @@ namespace CKLLib
                 result.Add([diagrams[0]]);
                 bool isAdded = false;
 
-                foreach (CKL ckl in diagrams.GetRange(1, diagrams.Count - 1)) 
+                foreach (CKL ckl in diagrams.GetRange(1, diagrams.Count - 1))
                 {
-                    foreach (List<CKL> potential in result) 
+                    foreach (List<CKL> potential in result)
                     {
-                        foreach (CKL cond in potential) 
+                        foreach (CKL cond in potential)
                         {
-                            if (filter(ckl, cond)) 
+                            if (filter(ckl, cond))
                             {
                                 potential.Add(ckl);
                                 isAdded = true;
                                 break;
                             }
-                        }   
+                        }
                     }
 
                     if (!isAdded) result.Add([ckl]);
@@ -995,7 +1001,7 @@ namespace CKLLib
                 return result;
             }
 
-            public static List<List<CKL>> GroupByTheme(List<CKL> diagrams) 
+            public static List<List<CKL>> GroupByTheme(List<CKL> diagrams)
             {
                 return GroupByTheme(diagrams, AreCKLGroupable);
             }

@@ -84,22 +84,22 @@ namespace CKLLib
             return false;
         }
 
-		private class ValuesEqComparer : IEqualityComparer<object>
-		{
-			public new bool Equals(object? x, object? y)
-			{
+        private class ValuesEqComparer : IEqualityComparer<object>
+        {
+            public new bool Equals(object? x, object? y)
+            {
                 if (x == null || y == null) return true;
                 if (x == null) return false;
 
                 return x.ToString()!.Equals(y.ToString());
-			}
+            }
 
-			public int GetHashCode([DisallowNull] object obj)
-			{
+            public int GetHashCode([DisallowNull] object obj)
+            {
                 return obj.GetHashCode();
-			}
-		}
-	}
+            }
+        }
+    }
 
-	
+
 }
